@@ -18,11 +18,20 @@
     const id = new URLSearchParams(location.search).get('v') ?? '';
     if (/^[A-Za-z0-9_-]{11}$/.test(id)) {
       const frame = document.createElement('iframe');
-      frame.src = `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0`;
+      frame.src = `https://www.youtube.com/embed/${id}?autoplay=1&playsinline=1&rel=0&cc_load_policy=0&enablejsapi=1`;
       frame.allow = 'autoplay; encrypted-media; fullscreen';
       frame.referrerPolicy = 'strict-origin-when-cross-origin';
       frame.title = 'YouTube player';
       document.body.append(frame);
+
+      // YouTube turns captions on by default for some videos and cc_load_policy=0 doesn't stop it,
+      // so the running player is told, repeatedly because captions can come back after an ad.
+      const send = (message) => frame.contentWindow.postMessage(JSON.stringify(message), 'https://www.youtube.com');
+      setInterval(() => {
+        send({ event: 'listening' });
+        send({ event: 'command', func: 'setOption', args: ['captions', 'track', {}] });
+        send({ event: 'command', func: 'unloadModule', args: ['captions'] });
+      }, 2000);
     } else {
       const message = document.createElement('p');
       message.textContent = 'No valid YouTube video ID';
